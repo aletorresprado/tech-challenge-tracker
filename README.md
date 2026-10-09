@@ -1,154 +1,159 @@
-# Tech Challenge Tracker
+﻿# Tech Challenge Tracker
 
-Proyecto para aprender FastAPI, Pydantic y Firestore paso a paso.
+API REST para organizar desafíos técnicos personales, registrar su dificultad y seguir su progreso. Construida con **Python, FastAPI, Pydantic y Firebase Firestore** como proyecto práctico de aprendizaje de backend y bases de datos NoSQL.
 
-## Paso 1: servidor básico
+Permite crear, consultar, actualizar y eliminar desafíos. Los datos se guardan en Firestore y permanecen después de reiniciar el servidor.
 
-Desde la raíz del proyecto, en PowerShell:
+## Funcionalidades
+
+- CRUD completo con identificadores generados por Firestore.
+- Filtro por estado: pendientes, en progreso y completados.
+- Actualización parcial con PATCH, conservando los campos no enviados.
+- Validación de datos y respuestas HTTP para solicitudes inválidas y recursos inexistentes.
+- Documentación interactiva en Swagger UI y esquema OpenAPI.
+
+## Tecnologías
+
+| Tecnología | Uso |
+| --- | --- |
+| Python | Lenguaje del backend |
+| FastAPI | Rutas HTTP, parámetros e inyección de dependencias |
+| Pydantic | Modelos y validación de datos |
+| Firebase Firestore | Persistencia NoSQL en colecciones y documentos |
+| Firebase Admin SDK | Acceso a Firestore desde Python |
+| Uvicorn | Servidor ASGI |
+
+## Estructura
+
+```text
+tech-challenge-tracker/
+├── backend/
+│   ├── main.py             # Endpoints
+│   ├── models.py           # Modelos de creación, respuesta y actualización
+│   ├── database.py         # Inicialización y dependencia de Firestore
+│   ├── requirements.txt    # Dependencias
+│   └── credentials/        # Clave local; excluida de Git
+├── docs/
+│   └── aprendizaje.md      # Construcción paso a paso
+├── .gitignore
+└── README.md
+```
+
+## Ejecutar localmente
+
+Necesitás Git, Python 3.10 o superior y un proyecto de Firebase con Firestore. El entorno utilizado durante el desarrollo fue Python 3.13 en Windows.
+
+### 1. Clonar e instalar
+
+En PowerShell:
 
 ```powershell
-cd backend
+git clone https://github.com/aletorresprado/tech-challenge-tracker.git
+cd tech-challenge-tracker/backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python -m uvicorn main:app --reload
-```
-
-Si PowerShell bloquea la activación, podés usar el Python del entorno directamente:
-
-```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn main:app --reload
 ```
 
-Abrí http://127.0.0.1:8000 para comprobar la respuesta del servidor y
-http://127.0.0.1:8000/docs para explorar la documentación interactiva.
-Detené el servidor con Ctrl+C.
+Usamos directamente el Python del entorno virtual para evitar instalaciones globales y problemas de activación en PowerShell.
 
-FastAPI define los endpoints; Uvicorn ejecuta el servidor; Pydantic validará los
-datos de los desafíos; firebase-admin permitirá acceder a Firestore.
-En este paso no se inicializa Firebase ni se necesitan credenciales.
+### 2. Configurar Firebase
 
-## Paso 2: modelos y endpoints
+1. Creá un proyecto en la [consola de Firebase](https://console.firebase.google.com/).
+2. Creá una base **Cloud Firestore Standard**, con ID **`(default)`**, elegí su ubicación y seleccioná reglas en modo producción.
+3. En **Configuración del proyecto → Cuentas de servicio**, generá una clave privada.
+4. Creá la carpeta `backend/credentials` y guardá el JSON como `firebase-service-account.json`.
 
-`backend/models.py` define los datos con Pydantic. `ChallengeCreate` representa
-los datos recibidos y `Challenge` agrega el identificador generado por el servidor.
+La clave es privada y no debe subirse a GitHub. La carpeta `backend/credentials/` está excluida mediante `.gitignore`.
 
-En http://127.0.0.1:8000/docs, probá `POST /challenges` con:
+### 3. Iniciar el servidor
 
-```json
-{
-  "title": "Practicar FastAPI",
-  "description": "Crear y listar desafíos con validación",
-  "difficulty": "easy",
-  "status": "pending"
-}
-```
-
-Luego ejecutá `GET /challenges` para ver el desafío creado. Un título vacío o una
-dificultad fuera de `easy`, `medium`, `hard` produce una respuesta 422.
-
-Los datos viven en memoria: se pierden al detener o reiniciar el servidor,
-incluidos los reinicios automáticos de `--reload`. Usá un solo proceso en este
-paso. El Paso 3 reemplaza esta lista por Firestore.
-
-## Paso 3: persistencia en Firestore
-
-El código actual usa Firestore; el Paso 2 describe la versión anterior en memoria.
-
-1. Creá un proyecto en https://console.firebase.google.com/.
-2. En Firestore Database creá una base de datos Standard con ID `(default)`.
-   Elegí una ubicación adecuada y reglas en modo producción.
-3. En Configuración del proyecto > Cuentas de servicio generá una clave privada.
-4. Guardá el JSON como `backend/credentials/firebase-service-account.json`.
-   Esta carpeta está excluida de Git. No compartas la clave privada.
-5. Detené el servidor con Ctrl+C. Desde `backend`, en PowerShell, ejecutá:
+Desde `backend`, en la misma terminal:
 
 ```powershell
 $env:GOOGLE_APPLICATION_CREDENTIALS = (Resolve-Path .\credentials\firebase-service-account.json).Path
 .\.venv\Scripts\python.exe -m uvicorn main:app --reload
 ```
 
-La variable se configura para esa terminal; repetí la asignación al abrir otra.
-`GET /` comprueba que FastAPI está funcionando, no la conexión a Firestore.
-Sin la variable, los endpoints de desafíos responden 503 con una indicación.
+La variable se configura para esa terminal; repetí la asignación si abrís otra. Detené el servidor con `Ctrl+C`.
 
-Creá un desafío desde `/docs`, consultá `GET /challenges`, reiniciá el servidor y
-consultá nuevamente. Verificá el documento en la colección `challenges` de la
-consola de Firebase. Los desafíos de la versión en memoria no se migran.
+- **API:** http://127.0.0.1:8000
+- **Swagger UI:** http://127.0.0.1:8000/docs
+- **OpenAPI:** http://127.0.0.1:8000/openapi.json
 
-Firestore organiza los datos en colecciones y documentos. Cada desafío es un
-documento cuyos campos se guardan con `set`; `stream` consulta la colección.
-El identificador del documento se devuelve como `id` en nuestra API.
+`GET /` comprueba que FastAPI responde. Firestore se utiliza al ejecutar los endpoints de desafíos.
 
-Firebase Admin usa permisos de la cuenta de servicio (IAM), no las reglas de
-seguridad de clientes web. Esta API todavía no tiene autenticación: ejecutala
-localmente mientras aprendemos.
+## Endpoints
 
-## Paso 4: consultar un desafío por ID
+| Método | Ruta | Operación | Éxito |
+| --- | --- | --- | --- |
+| GET | `/` | Comprobar que la API responde | 200 |
+| POST | `/challenges` | Crear un desafío | 201 |
+| GET | `/challenges` | Listar, con filtro opcional `status` | 200 |
+| GET | `/challenges/{challenge_id}` | Consultar uno | 200 |
+| PATCH | `/challenges/{challenge_id}` | Actualizar campos | 200 |
+| DELETE | `/challenges/{challenge_id}` | Eliminar | 204, sin cuerpo |
 
-`GET /challenges/{challenge_id}` consulta un documento concreto de Firestore.
-FastAPI toma el ID de la URL y lo entrega al parámetro `challenge_id`.
+Las operaciones por ID devuelven **404** si el desafío no existe. Las entradas inválidas devuelven **422**. Sin `GOOGLE_APPLICATION_CREDENTIALS`, los endpoints de desafíos devuelven **503**.
 
-1. Ejecutá `GET /challenges` en `/docs` y copiá el `id` de un desafío.
-2. En `GET /challenges/{challenge_id}`, pulsá **Try it out**, pegá ese ID y
-   ejecutá la consulta. Deberías recibir 200 y un único desafío.
-3. Repetí con `id-que-no-existe`. Deberías recibir 404 con
-   `{"detail": "Desafío no encontrado"}`.
+## Ejemplo de uso
 
-`HTTPException` interrumpe el endpoint y permite devolver el código HTTP y
-el mensaje del error. Un documento inexistente es un 404, no una lista vacía.
-
-## Paso 5: actualizar algunos campos
-
-`PATCH /challenges/{challenge_id}` recibe un `ChallengeUpdate`: los campos
-se pueden omitir, pero los enviados deben ser válidos y no pueden ser `null`.
-Se rechazan cuerpos vacíos y campos desconocidos (incluido `id`) con 422.
-
-En `/docs`, copiá el ID de un desafío y probá el PATCH con:
+En `/docs`, abrí **POST /challenges → Try it out**, enviá este cuerpo y presioná **Execute**:
 
 ```json
-{"status": "completed"}
+{
+  "title": "Practicar FastAPI",
+  "description": "Implementar una API con persistencia NoSQL",
+  "difficulty": "medium",
+  "status": "pending"
+}
 ```
 
-La respuesta 200 contiene el desafío actualizado. Consultalo nuevamente con
-GET para comprobar que el estado quedó guardado y los otros campos se conservaron.
-Un ID inexistente devuelve 404; `{"status": "invalid"}` devuelve 422.
+La respuesta incluye esos campos y un `id` generado por Firestore. Cada desafío es un documento en la colección `challenges`; su identificador se devuelve como `id` en la API.
 
-`model_dump(exclude_unset=True)` incluye solo los campos enviados.
-Firestore `update` modifica esos campos sin reemplazar el documento completo.
+| Campo | Restricciones | Predeterminado |
+| --- | --- | --- |
+| `title` | Obligatorio al crear; entre 1 y 120 caracteres | — |
+| `description` | Hasta 2000 caracteres | `""` |
+| `difficulty` | `easy`, `medium`, `hard` | `easy` |
+| `status` | `pending`, `in_progress`, `completed` | `pending` |
 
-## Paso 6: eliminar un desafío
+Copiá el ID recibido y usalo en **PATCH /challenges/{challenge_id}** con:
 
-`DELETE /challenges/{challenge_id}` elimina el documento de Firestore.
-Si existe, devuelve 204 sin cuerpo; si no existe, devuelve 404.
+```json
+{"status": "in_progress"}
+```
 
-1. Creá con POST un desafío de prueba, por ejemplo `{"title": "Prueba de borrado"}`.
-2. Copiá su ID y ejecutá DELETE desde `/docs` con ese identificador.
-3. Comprobá el 204 y consultá ese ID con GET: ahora debería devolver 404.
-4. Consultá la lista: los otros desafíos deberían seguir presentes.
-5. Repetí el DELETE con el mismo ID: debería devolver 404.
+Solo se modifica el estado. PATCH rechaza cuerpos vacíos, valores `null` y campos desconocidos, incluido `id`.
 
-La comprobación de existencia es necesaria porque `delete()` de Firestore
-también permite eliminar una referencia cuyo documento ya no existe.
+Consultá luego:
 
-## Paso 7: filtrar por estado
+```text
+GET /challenges?status=in_progress
+```
 
-`GET /challenges` acepta el parámetro de consulta opcional `status`:
+El filtro se ejecuta en Firestore. Sin `status` se listan todos; si no hay coincidencias, se devuelve `200` con `[]`.
 
-- `/challenges`: todos los desafíos.
-- `/challenges?status=in_progress`: solo los que están en progreso.
-- `/challenges?status=completed`: solo los completados.
-- `/challenges?status=pending`: solo los pendientes.
+## Validación
 
-En `/docs`, recargá la página, abrí GET /challenges y pulsá **Try it out**.
-Elegí un estado y ejecutá. Para consultar todos, omití el parámetro (no envíes
-un texto vacío). También podés abrir esas URLs directamente en el navegador.
+Se probaron manualmente desde Swagger UI la creación, consulta, actualización y eliminación contra Firestore, los errores 404 y la persistencia después de reiniciar el servidor. Durante el desarrollo también se verificaron casos de validación y operaciones con Firestore simulado. El repositorio todavía no incluye una suite de pruebas automatizadas.
 
-Un estado inválido devuelve 422. Si el estado es válido pero no tiene
-coincidencias, la respuesta es 200 con `[]`.
+Para repetir el flujo: creá un desafío, consultalo por ID, cambiá su estado, reiniciá el servidor y comprobá que siga guardado. Finalmente, eliminá el desafío de prueba y verificá que consultarlo devuelva 404.
 
-`ChallengeStatus` centraliza los estados permitidos en los modelos y el filtro.
-`Query` documenta el parámetro; Firestore ejecuta la consulta con
-`where(filter=FieldFilter("status", "==", status))` antes de devolver documentos.
-Referencia: https://firebase.google.com/docs/firestore/query-data/queries
+## Estado actual y próximos pasos
+
+Backend funcional para aprendizaje y ejecución local. Todavía no incluye interfaz web, autenticación, paginación ni despliegue público de la API. Firebase Admin utiliza permisos IAM de la cuenta de servicio y no las reglas de seguridad de los clientes web; falta incorporar autenticación y autorización antes de exponer datos de usuarios.
+
+- [ ] Filtro por dificultad y fechas de creación.
+- [ ] Paginación e índices para consultas más avanzadas.
+- [ ] Separación de rutas y acceso a datos.
+- [ ] Pruebas automatizadas.
+- [ ] Autenticación con Firebase y desafíos por usuario.
+- [ ] Interfaz web y despliegue.
+
+## Aprendizaje
+
+El proyecto practica diseño de endpoints REST, parámetros de ruta y consulta, códigos HTTP, validación con Pydantic, inyección de dependencias y modelado mediante documentos NoSQL.
+
+El [recorrido paso a paso](docs/aprendizaje.md) conserva las etapas de construcción, incluida la primera versión con almacenamiento en memoria.
+
+**Autor:** [aletorresprado](https://github.com/aletorresprado).
